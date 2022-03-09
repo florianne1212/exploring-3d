@@ -42,7 +42,7 @@ fontLoader.load(
     (font) =>
     {
         const textGeometry = new TextGeometry (
-            'Sunshine',
+            'hello',
             {
                 font: font,
                 size: 0.5,
