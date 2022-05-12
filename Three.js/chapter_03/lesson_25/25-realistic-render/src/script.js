@@ -18,6 +18,7 @@ const cubeTextureLoader = new THREE.CubeTextureLoader()
  */
 // Debug
 const gui = new dat.GUI()
+const debugObject = {}
 
 // Canvas
 const canvas = document.querySelector('canvas.webgl')
@@ -35,9 +36,11 @@ const updateAllMaterials = () =>
 	{
 		if(child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial)
 		{
-			child.material.envMap = environmentMap
-			child.material.envMapIntensity = 2.5
-
+			//child.material.envMap = environmentMap
+			child.material.envMapIntensity = debugObject.envMapIntensity
+			child.material.needsUpdate = true
+			child.castShadow = true
+			child.receiveShadow = true
 		}	
 	})
 }
@@ -45,38 +48,43 @@ const updateAllMaterials = () =>
 /**
  * Test sphere
  */
-const testSphere = new THREE.Mesh(
-	new THREE.SphereGeometry(1, 32, 32),
-	new THREE.MeshStandardMaterial()
-)
-scene.add(testSphere)
+// const testSphere = new THREE.Mesh(
+// 	new THREE.SphereGeometry(1, 32, 32),
+// 	new THREE.MeshStandardMaterial()
+// )
+// scene.add(testSphere)
 
 /**
  * Environment Map
  */
 
 const environmentMap = cubeTextureLoader.load([
-	'/textures/environmentMaps/0/px.jpg',
-	'/textures/environmentMaps/0/nx.jpg',
-	'/textures/environmentMaps/0/py.jpg',
-	'/textures/environmentMaps/0/ny.jpg',
-	'/textures/environmentMaps/0/pz.jpg',
-	'/textures/environmentMaps/0/nz.jpg',
+	'/textures/environmentMaps/1/px.jpg',
+	'/textures/environmentMaps/1/nx.jpg',
+	'/textures/environmentMaps/1/py.jpg',
+	'/textures/environmentMaps/1/ny.jpg',
+	'/textures/environmentMaps/1/pz.jpg',
+	'/textures/environmentMaps/1/nz.jpg',
 ])
+environmentMap.encoding = THREE.sRGBEncoding
 scene.background = environmentMap
+scene.environment = environmentMap
 //console.log(environmentMap)
+
+debugObject.envMapIntensity = 2
+gui.add(debugObject, 'envMapIntensity').min(0).max(10).step(0.001).onChange(updateAllMaterials)
 
 /**
  * Models
  */
 
  gltfLoader.load(
-	'models/FlightHelmet/gltF/FlightHelmet.gltf',
+	'models/hamburger.glb',
 	(gltf) =>
 	{
 		// console.log('success')
 		// console.log(gltf)
-		gltf.scene.scale.set(10,10,10)
+		gltf.scene.scale.set(0.3,0.3,0.3)
 		gltf.scene.position.set(0, -4, 0)
 		gltf.scene.rotation.y = Math.PI * 0.75
 		scene.add(gltf.scene)
@@ -94,7 +102,14 @@ scene.background = environmentMap
 
 const directionalLight = new THREE.DirectionalLight('#ffffff', 3)
 directionalLight.position.set(0.25, 3, -2.25)
+directionalLight.castShadow = true
+directionalLight.shadow.camera.far = 15
+directionalLight.shadow.mapSize.set(1024, 1024)
+directionalLight.shadow.normalBias = 0.05
 scene.add(directionalLight)
+
+// const directionalLightCameraHelper = new THREE.CameraHelper(directionalLight.shadow.camera)
+// scene.add(directionalLightCameraHelper)
 
 gui.add(directionalLight, 'intensity').min(0).max(10).step(0.001).name('lightintensity')
 gui.add(directionalLight.position, 'x').min(-5).max(5).step(0.001).name('lightX')
@@ -141,12 +156,32 @@ controls.enableDamping = true
  * Renderer
  */
 const renderer = new THREE.WebGLRenderer({
-	canvas: canvas
+	canvas: canvas,
+	antialias: true
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.physicallyCorrectLights = true
+renderer.outputEncoding = THREE.sRGBEncoding
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFShadowMap
 
+gui
+	.add(renderer, 'toneMapping', {
+		No: THREE.NoToneMapping,
+		Linear: THREE.LinearToneMapping,
+		Rheinard: THREE.ReinhardToneMapping,
+		Cineaon: THREE.CineonToneMapping,
+		ACESFilmic: THREE.ACESFilmicToneMapping,
+	})
+	.onFinishChange(() => {
+		renderer.toneMapping = Number(renderer.toneMapping)
+		updateAllMaterials
+	})
+
+gui.add(renderer, 'toneMappingExposure').min(0).max(10).step(0.01)
 /**
  * Animate
  */
